@@ -99,7 +99,6 @@ Screen('TextFont',w,'Times');
 Screen('TextStyle',w,1); 
 
 
-
 %% Instructions
 
 
@@ -204,6 +203,8 @@ tf = Num_Reinforce;
 
 %% Trial loop
 for i = 1:num_trial   % Number of trials
+    
+    tic;
     
     Target_click{i,1}(1,1)=0; %Initialize
     
@@ -460,7 +461,7 @@ end
         
  
 end
- 
+Trial_time(i) = toc;
 end    % i
 
 
