@@ -82,7 +82,7 @@ ResponseTime = {};
 
 %%
 
-
+InitializePsychSound(1);
 KbName('UnifyKeyNames'); 
 
 commandwindow;
@@ -98,10 +98,15 @@ Screen('TextSize', w, 20);
 Screen('TextFont',w,'Times');
 Screen('TextStyle',w,1); 
 
+% Read voice file
+[voice1,Fs1] = audioread('Correct.wav');
+[voice2,Fs2] = audioread('Wrong.wav');
+pahandle1 = PsychPortAudio('Open', [], [], 2, Fs1, 1, 0);
+PsychPortAudio('FillBuffer', pahandle1, voice1');
+pahandle2 = PsychPortAudio('Open', [], [], 2, Fs2, 1, 0);
+PsychPortAudio('FillBuffer', pahandle2, voice2');
 
 %% Instructions
-
-
 message_begin=[ '\n'...
     'Welcome!\n'...
     '\n'...
@@ -157,14 +162,13 @@ message1=[ '\n'...
 DrawFormattedText(w, message1, 'center', 'center', white) ;
 Screen('Flip', w) ;  
 
-% Get mouse click info 
-[~,~,~,whichButton] = GetClicks(w,0.1);
+
+[~,~,~,whichButton] = GetClicks(w,0.001); % Get mouse click info 
 
 MousePress = any(whichButton); %sets to 1 if a button was pressed
 
 if MousePress %if key was pressed do the following
-   [voice,Fs] = audioread('Correct.wav');
-   sound(voice,Fs);
+   sound(voice1,Fs1);
 end
 
 WaitSecs(0.5);
@@ -183,13 +187,12 @@ DrawFormattedText(w, message2, 'center', 'center', white) ;
 Screen('Flip', w) ;  
 
 % Get mouse click info 
-[~,~,~,whichButton] = GetClicks(w,0.1);
+[~,~,~,whichButton] = GetClicks(w,0.001);
 
 MousePress = any(whichButton); %sets to 1 if a button was pressed
 
 if MousePress %if key was pressed do the following
-   [voice,Fs] = audioread('Wrong.wav');
-   sound(voice,Fs);
+   sound(voice2,Fs2)
 end
 
 WaitSecs(1);
@@ -201,10 +204,10 @@ W0 = InitialThreshold;
 Wc = DotSize;
 tf = Num_Reinforce;
 
+
+
 %% Trial loop
 for i = 1:num_trial   % Number of trials
-    
-    tic;
     
     Target_click{i,1}(1,1)=0; %Initialize
     
@@ -254,7 +257,7 @@ DotLoc(i,2) = (winRect(4) - InitialThreshold - InitialThreshold).*rand([1 1]) + 
 message3=['Trial  ' num2str(i) ];
 DrawFormattedText(w, message3, 'center', 'center', white) ;
 Screen('Flip', w) ;  
-WaitSecs(0.8); 
+WaitSecs(1); 
 
 % Black screen
 Screen('FillRect', w,[0 0 0],[winRect]); 
@@ -266,19 +269,19 @@ a = 1;
 temp = InitialThreshold;
 
 for j = 1:100    % Number of clicks until reaching threshold 15 times overall
-
-    
+  
 StartTime{i,1}(j,1) = GetSecs;
     
 % Get mouse click info 
-[clicks,x(j),y(j),whichButton] = GetClicks(w,0.1);
+[clicks,x(j),y(j),whichButton] = GetClicks(w,0.01);
 
 MousePress = any(whichButton); %sets to 1 if a button was pressed
 
 if MousePress %if key was pressed do the following
-     ResponseTime{i,1}(j,1) = GetSecs-StartTime{i,1}(j,1);
+   ResponseTime{i,1}(j,1) = GetSecs-StartTime{i,1}(j,1);
 end
 
+WaitSecs(0.005);
 
 % Distance from first click point to center 1
 Dist{i,1}(j,1) = sqrt((x(j) - DotLoc(i,1))^2 + (y(j) - DotLoc(i,2))^2);
@@ -305,9 +308,10 @@ Threshold(i,j) = temp;
 
 if j == 1
 if Dist{i,1}(j,1) <= Threshold(i,j)    % Determine if click is within threshold
+ 
+    starttime = GetSecs + 0.001;
+    PsychPortAudio('Start', pahandle1, 1,starttime);
 
-   [voice,Fs] = audioread('Correct.wav');
-   sound(voice,Fs);
    Yes{i,1}(j,1) = 1;
    No{i,1}(j,1) = 0;
    
@@ -328,9 +332,9 @@ end
    
    
 else
+   starttime = GetSecs + 0.001;
+   PsychPortAudio('Start', pahandle2, 1,starttime);
 
-   [voice,Fs] = audioread('Wrong.wav');
-   sound(voice,Fs);
    No{i,1}(j,1) = 1;
    Yes{i,1}(j,1) = 0;
    
@@ -348,8 +352,9 @@ elseif j > 1
     
     if Dist{i,1}(j,1) <= Threshold(i,j-1)    % Determine if click is within threshold
 
-   [voice,Fs] = audioread('Correct.wav');
-   sound(voice,Fs);
+       starttime = GetSecs + 0.001;
+       PsychPortAudio('Start', pahandle1, 1,starttime);
+
    Yes{i,1}(j,1) = 1;
    No{i,1}(j,1) = 0;
    
@@ -369,10 +374,11 @@ end
    
    
    
-else
+    else
+    
+    starttime = GetSecs + 0.001;
+    PsychPortAudio('Start', pahandle2, 1,starttime);
 
-   [voice,Fs] = audioread('Wrong.wav');
-   sound(voice,Fs);
    No{i,1}(j,1) = 1;
    Yes{i,1}(j,1) = 0;
    
@@ -383,10 +389,7 @@ else
    Screen('Flip', w) ;  
 %    WaitSecs(0.1); 
 
-
-    
-   
-    end
+   end
 
 end
     
@@ -400,23 +403,17 @@ end
    if max(diff([0 (find(~(Target_click{i,1} > 0))') numel(Target_click{i,1})' + 1]) - 1) >= 10
       WaitSecs(0.5);
       
-
-
-
 DrawFormattedText(w, Click_Count, 0.9*winRect(3), 0.1*winRect(4), white);
 
 Screen('Flip', w);
    
-
-       
+      
        break
        
-
    else
        continue
        
    end   % Count >=
-
 end    % j
 
 if i == round(num_trial/3)
@@ -461,7 +458,6 @@ end
         
  
 end
-Trial_time(i) = toc;
 end    % i
 
 
@@ -483,9 +479,7 @@ Results.No = No;
 Results.Order = order;
 Results.TargetClick = Target_click;
 
-% elseif QuitProgram == 1
-% error('Not enough inputs. Please restart program.')
-% end   % if QuitProgram == 0
+
 close all
 
 formatOut = 'yymmdd';
